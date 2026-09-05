@@ -47,6 +47,29 @@ export interface RetryAttemptItem {
   status?: string;
 }
 
+export interface RecoveryMessageItem {
+  id: string;
+  transaction_id: string;
+  channel: string;
+  content: string;
+  sent_at?: string;
+  opened_at?: string;
+  created_at: string;
+  payment_id?: string;
+  amount?: number;
+  currency?: string;
+  status?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_segment?: string;
+}
+
+export async function fetchRecoveryMessages(limit: number = 20): Promise<RecoveryMessageItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/recovery/messages?limit=${limit}`);
+  if (!res.ok) throw new Error(`Failed to load recovery messages: ${res.statusText}`);
+  return res.json();
+}
+
 export interface SimulatePayload {
   customer_name: string;
   email: string;

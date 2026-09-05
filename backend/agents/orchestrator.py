@@ -304,6 +304,35 @@ def record_orchestrator_decision(
     except Exception as sb_err:
         logger.warning(f"Supabase orchestrator sync warning: {sb_err}")
 
+    # 3. If action is notify_customer, automatically generate and dispatch recovery message
+    msg_dispatch_result = None
+    if decision.get("action") == "notify_customer":
+        try:
+            from agents.messenger import generate_recovery_message, send_message
+            tx_obj = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+            cust_obj = None
+            if customer_id:
+                cust_obj = db.query(Customer).filter(Customer.id == customer_id).first()
+            elif tx_obj and tx_obj.customer_id:
+                cust_obj = db.query(Customer).filter(Customer.id == tx_obj.customer_id).first()
+
+            if tx_obj and cust_obj:
+                msg_content = generate_recovery_message(
+                    customer=cust_obj,
+                    transaction=tx_obj,
+                    reason=decision.get("classification") or tx_obj.failure_reason_raw
+                )
+                msg_dispatch_result = send_message(
+                    channel="email",
+                    content=msg_content,
+                    customer=cust_obj,
+                    transaction=tx_obj,
+                    db=db,
+                    supabase_tx_id=sb_action_id or (remote_tx_id if 'remote_tx_id' in locals() else None)
+                )
+        except Exception as msg_err:
+            logger.error(f"Automatic messenger notification failed: {msg_err}")
+
     # Output transparency notice in console (ASCII safe for all terminal encodings)
     try:
         print("\n" + "-" * 80)
@@ -315,6 +344,8 @@ def record_orchestrator_decision(
         print(f" - Action ID:      {recovery_action.id} (Supabase: {sb_action_id or 'Local'})")
         if retry_attempt_record:
             print(f" - Retry ID:       {retry_attempt_record.id} (Supabase: {sb_retry_id or 'Local'})")
+        if msg_dispatch_result:
+            print(f" - Notification:   Dispatched ({msg_dispatch_result.get('status', 'mocked').upper()}) to {msg_dispatch_result.get('customer_email')}")
         print("-" * 80 + "\n")
     except Exception:
         pass
@@ -324,5 +355,6 @@ def record_orchestrator_decision(
         "supabase_action_id": sb_action_id,
         "retry_attempt_id": str(retry_attempt_record.id) if retry_attempt_record else None,
         "supabase_retry_id": sb_retry_id,
-        "decision": decision
+        "decision": decision,
+        "recovery_message": msg_dispatch_result
     }

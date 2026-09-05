@@ -4,10 +4,35 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from db.connection import get_db
-from models.db_models import RecoveryAction, RetryAttempt, Transaction
+from models.db_models import RecoveryAction, RetryAttempt, Transaction, RecoveryMessage, Customer
 from services.scheduler import retry_scheduler
 
 router = APIRouter(prefix="/api/recovery", tags=["Recovery Orchestration & Transparency"])
+
+@router.get("/messages")
+def get_recovery_messages(db: Session = Depends(get_db), limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Returns recent customer recovery notifications generated and dispatched by the Messenger Agent.
+    """
+    messages = db.query(RecoveryMessage).order_by(desc(RecoveryMessage.created_at)).limit(limit).all()
+    results = []
+    for m in messages:
+        data = m.as_dict()
+        tx = db.query(Transaction).filter(Transaction.id == m.transaction_id).first()
+        if tx:
+            data["payment_id"] = tx.razorpay_payment_id
+            data["amount"] = float(tx.amount) if tx.amount else 0
+            data["currency"] = tx.currency
+            data["status"] = tx.status
+            data["failure_reason_raw"] = tx.failure_reason_raw
+            if tx.customer_id:
+                cust = db.query(Customer).filter(Customer.id == tx.customer_id).first()
+                if cust:
+                    data["customer_name"] = cust.name
+                    data["customer_email"] = cust.email
+                    data["customer_segment"] = cust.segment
+        results.append(data)
+    return results
 
 @router.get("/actions")
 def get_recovery_actions(db: Session = Depends(get_db), limit: int = 50) -> List[Dict[str, Any]]:

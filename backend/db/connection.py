@@ -133,6 +133,10 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+def get_db_session() -> Session:
+    """Returns a standalone SQLAlchemy session."""
+    return SessionLocal()
+
 def init_db():
     """Initializes schema tables if using SQLite or direct ORM create."""
     from models.db_models import Base

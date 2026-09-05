@@ -19,15 +19,18 @@ import {
   Play,
   History,
   Zap,
+  Mail,
 } from 'lucide-react';
 import { MetricCard } from '../components/MetricCard';
 import {
   type HealthCheckResponse,
   type RecoveryActionItem,
   type RetryAttemptItem,
+  type RecoveryMessageItem,
   API_BASE_URL,
   fetchRecoveryActions,
   fetchRetryAttempts,
+  fetchRecoveryMessages,
   triggerRunRetries,
   simulateFailure,
 } from '../api/client';
@@ -52,6 +55,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [showRawJson, setShowRawJson] = useState(false);
   const [actions, setActions] = useState<RecoveryActionItem[]>([]);
   const [retries, setRetries] = useState<RetryAttemptItem[]>([]);
+  const [messages, setMessages] = useState<RecoveryMessageItem[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
@@ -63,12 +67,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const loadRecoveryData = async () => {
     try {
       setLoadingData(true);
-      const [actionsData, retriesData] = await Promise.all([
+      const [actionsData, retriesData, messagesData] = await Promise.all([
         fetchRecoveryActions(25),
         fetchRetryAttempts(25),
+        fetchRecoveryMessages(25),
       ]);
       setActions(actionsData);
       setRetries(retriesData);
+      setMessages(messagesData);
     } catch (err) {
       console.error('Failed to fetch recovery data:', err);
     } finally {
@@ -608,6 +614,93 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </section>
       </div>
+
+      {/* Gemini Adaptive Recovery Messaging Feed */}
+      <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-6 shadow-xl backdrop-blur-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Gemini Recovery Messages
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-medium">
+                Adaptive Tone (B2C / B2B)
+              </span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Personalized customer notifications generated with Gemini 3.6 Flash and recorded in <code className="text-amber-300 font-mono">recovery_messages</code>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">
+              MOCK_MODE: ACTIVE
+            </span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+              {messages.length} Dispatched
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {messages.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-slate-500 text-sm">
+              No recovery messages sent yet. Trigger the "Expired or Invalid Card" simulation above to test Gemini generation!
+            </div>
+          ) : (
+            messages.map((msg) => {
+              const isB2B = (msg.customer_segment || '').toLowerCase() === 'b2b';
+              return (
+                <div
+                  key={msg.id}
+                  className="rounded-xl bg-slate-950/70 border border-slate-800/90 p-4 hover:border-amber-500/30 transition-all flex flex-col justify-between space-y-3 group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                            isB2B
+                              ? 'bg-purple-950/80 text-purple-300 border border-purple-800/60'
+                              : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                          }`}
+                        >
+                          {isB2B ? 'B2B (Formal)' : 'B2C (Friendly)'}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase font-mono flex items-center gap-1">
+                          <Mail className="w-2.5 h-2.5" />
+                          {msg.channel}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    <div className="pt-1">
+                      <div className="text-xs font-semibold text-white truncate">
+                        {msg.customer_name || 'Customer'}
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate font-mono">
+                        {msg.customer_email || 'customer@example.com'}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed bg-slate-900/80 p-3 rounded-lg border border-slate-800/50 max-h-44 overflow-y-auto text-[11px]">
+                      {msg.content}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-900/90 flex items-center justify-between text-[10px] text-slate-500">
+                    <span>Tx: <code className="text-slate-400">{msg.payment_id || msg.transaction_id.slice(0, 8)}</code></span>
+                    <span className="font-mono text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Logged
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
 
       {/* Metric Cards Summary */}
       <div>
