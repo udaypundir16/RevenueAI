@@ -13,21 +13,39 @@ load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger("revenue-recovery-ai.db")
 
-# Read Supabase environment variables
-SUPABASE_URL: Optional[str] = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: Optional[str] = (
-    os.getenv("SUPABASE_KEY")
-    or os.getenv("SUPABASE_SECRET_KEY")
-    or os.getenv("SUPABASE_ANON_KEY")
-)
+from dotenv import dotenv_values
 
 DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
 
+def get_supabase_credentials():
+    """Dynamically reads Supabase credentials from .env or os.environ."""
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    url = None
+    key = None
+    
+    if env_file.exists():
+        vals = dotenv_values(env_file)
+        url = vals.get("SUPABASE_URL")
+        key = vals.get("SUPABASE_SECRET_KEY") or vals.get("SUPABASE_KEY") or vals.get("SUPABASE_ANON_KEY")
+
+    if not url:
+        url = os.getenv("SUPABASE_URL")
+    if not key:
+        key = (
+            os.getenv("SUPABASE_SECRET_KEY")
+            or os.getenv("SUPABASE_KEY")
+            or os.getenv("SUPABASE_ANON_KEY")
+        )
+    return (url.strip() if url else None), (key.strip() if key else None)
+
+SUPABASE_URL, SUPABASE_KEY = get_supabase_credentials()
+
 def is_supabase_configured() -> bool:
     """Returns True only if both SUPABASE_URL and a key are provided and not placeholders."""
-    if not SUPABASE_URL or not SUPABASE_KEY:
+    url, key = get_supabase_credentials()
+    if not url or not key:
         return False
-    if "your-project-id" in SUPABASE_URL or SUPABASE_KEY.startswith("placeholder"):
+    if "your-project-id" in url or key.startswith("placeholder"):
         return False
     return True
 
@@ -48,8 +66,9 @@ def get_supabase_client():
         return None
 
     try:
-        from supabase import create_client, Client
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        from supabase import create_client
+        url, key = get_supabase_credentials()
+        _supabase_client = create_client(url, key)
         logger.info("Supabase client successfully initialized.")
         return _supabase_client
     except Exception as e:

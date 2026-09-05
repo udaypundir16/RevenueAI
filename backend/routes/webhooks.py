@@ -38,7 +38,7 @@ def verify_razorpay_signature(raw_body: bytes, signature: Optional[str], secret:
     """
     if not secret or secret.startswith("placeholder"):
         print("\n" + "!" * 78)
-        print("⚠️  [NOTICE] RAZORPAY_WEBHOOK_SECRET is blank/unset in .env.")
+        print(" [NOTICE] RAZORPAY_WEBHOOK_SECRET is blank/unset in .env.")
         print("   Signature verification is BYPASSED for development/demo testing.")
         print("!" * 78 + "\n")
         return True
@@ -71,16 +71,16 @@ def print_demo_console_log(
     is_simulation: bool = False
 ):
     """Outputs a visually distinctive banner in the terminal for hackathon demo tracking."""
-    banner_title = "🧪 SIMULATED PAYMENT FAILURE" if is_simulation else "🔔 RAZORPAY WEBHOOK EVENT RECEIVED"
+    banner_title = "[SIMULATED PAYMENT FAILURE]" if is_simulation else "[RAZORPAY WEBHOOK EVENT RECEIVED]"
     print("\n" + "=" * 80)
     print(f" {banner_title}")
     print("=" * 80)
-    print(f" • Event:          {event_type}")
-    print(f" • Payment ID:     {payment_id}")
-    print(f" • Amount:         {currency} {amount:,.2f}")
-    print(f" • Customer Email: {customer_email}")
-    print(f" • Failure Reason: {failure_reason}")
-    print(f" • DB Status:      status='failed' | {action_taken}")
+    print(f" - Event:          {event_type}")
+    print(f" - Payment ID:     {payment_id}")
+    print(f" - Amount:         {currency} {amount:,.2f}")
+    print(f" - Customer Email: {customer_email}")
+    print(f" - Failure Reason: {failure_reason}")
+    print(f" - DB Status:      status='failed' | {action_taken}")
     print("=" * 80 + "\n")
 
 def process_and_persist_failure(
