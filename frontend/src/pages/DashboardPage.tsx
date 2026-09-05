@@ -1,89 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Server,
-  Activity,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Sparkles,
   DollarSign,
   TrendingUp,
-  Cpu,
+  AlertTriangle,
   RefreshCw,
-  Code2,
-  ChevronDown,
-  ChevronUp,
-  CreditCard,
-  Database,
-  BrainCircuit,
-  Play,
-  History,
   Zap,
-  Mail,
+  ArrowRight,
+  BrainCircuit,
+  History,
+  Play,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
 import { MetricCard } from '../components/MetricCard';
 import {
-  type HealthCheckResponse,
+  type DashboardSummaryResponse,
   type RecoveryActionItem,
   type RetryAttemptItem,
-  type RecoveryMessageItem,
-  API_BASE_URL,
+  fetchDashboardSummary,
   fetchRecoveryActions,
   fetchRetryAttempts,
-  fetchRecoveryMessages,
   triggerRunRetries,
   simulateFailure,
 } from '../api/client';
+import { Link } from 'react-router-dom';
 
-interface DashboardPageProps {
-  healthData: HealthCheckResponse | null;
-  loading: boolean;
-  error: string | null;
-  latencyMs: number | null;
-  lastChecked: Date | null;
-  onRefresh: () => void;
-}
-
-export const DashboardPage: React.FC<DashboardPageProps> = ({
-  healthData,
-  loading,
-  error,
-  latencyMs,
-  lastChecked,
-  onRefresh,
-}) => {
-  const [showRawJson, setShowRawJson] = useState(false);
+export const DashboardPage: React.FC = () => {
+  const [summaryData, setSummaryData] = useState<DashboardSummaryResponse | null>(null);
   const [actions, setActions] = useState<RecoveryActionItem[]>([]);
   const [retries, setRetries] = useState<RetryAttemptItem[]>([]);
-  const [messages, setMessages] = useState<RecoveryMessageItem[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
   const [executingRetries, setExecutingRetries] = useState(false);
   const [execResult, setExecResult] = useState<string | null>(null);
 
-  const isConnected = !!healthData && !error;
-
-  const loadRecoveryData = async () => {
+  const loadData = async () => {
     try {
-      setLoadingData(true);
-      const [actionsData, retriesData, messagesData] = await Promise.all([
-        fetchRecoveryActions(25),
-        fetchRetryAttempts(25),
-        fetchRecoveryMessages(25),
+      const [summaryRes, actionsRes, retriesRes] = await Promise.all([
+        fetchDashboardSummary(),
+        fetchRecoveryActions(10),
+        fetchRetryAttempts(10),
       ]);
-      setActions(actionsData);
-      setRetries(retriesData);
-      setMessages(messagesData);
+      setSummaryData(summaryRes);
+      setActions(actionsRes);
+      setRetries(retriesRes);
     } catch (err) {
-      console.error('Failed to fetch recovery data:', err);
-    } finally {
-      setLoadingData(false);
+      console.error('Failed to load dashboard data:', err);
     }
   };
 
   useEffect(() => {
-    loadRecoveryData();
+    loadData();
   }, []);
 
   const handleSimulate = async (scenario: {
@@ -106,8 +80,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         error_reason: scenario.reason,
       });
       const action = res?.orchestration?.decision?.action || 'processed';
-      setSimulationResult(`Autonomous decision: ${action.toUpperCase()} - ${res?.orchestration?.decision?.reasoning?.slice(0, 100)}...`);
-      await loadRecoveryData();
+      setSimulationResult(`Autonomous decision: ${action.toUpperCase()} - ${res?.orchestration?.decision?.reasoning?.slice(0, 110)}...`);
+      await loadData();
     } catch (err: any) {
       setSimulationResult(`Simulation failed: ${err.message}`);
     } finally {
@@ -121,7 +95,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setExecResult(null);
       const res = await triggerRunRetries();
       setExecResult(`Executed ${res.due_retries_executed_count} due retry attempt(s).`);
-      await loadRecoveryData();
+      await loadData();
     } catch (err: any) {
       setExecResult(`Error triggering retries: ${err.message}`);
     } finally {
@@ -129,318 +103,255 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const getActionBadge = (actionType: string) => {
-    switch (actionType.toLowerCase()) {
-      case 'retry':
-      case 'retry_later':
-      case 'retry_now':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-      case 'notify':
-      case 'notify_customer':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-      case 'escalate':
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-      case 'write_off':
-        return 'bg-slate-500/10 text-slate-400 border-slate-500/30';
-      default:
-        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
-    }
+  const kpis = summaryData?.kpis || {
+    revenue_at_risk: 124500,
+    revenue_recovered: 78200,
+    recovery_rate: 68.4,
+    active_retries: 5,
   };
 
-  const getOutcomeBadge = (outcome: string) => {
-    switch (outcome.toLowerCase()) {
-      case 'success':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-      case 'failed':
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-      case 'pending':
-      default:
-        return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
-    }
-  };
+  const chartData = summaryData?.recovery_chart || [];
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Banner Greeting */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-950/60 via-slate-900/80 to-purple-950/40 border border-indigo-500/20 p-8 shadow-2xl backdrop-blur-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Autonomous Orchestrator & Multi-Gateway Ready</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-              Revenue Recovery AI Dashboard
-            </h1>
-            <p className="mt-2 text-slate-300 text-sm max-w-2xl leading-relaxed">
-              Real-time payment failure recovery orchestration powered by intelligent failure classification,
-              autonomous rule-based dunning, and transparent AI agent reasoning synchronized with Supabase & Razorpay.
-            </p>
-          </div>
+    <div className="space-y-8 pb-12">
+      {/* 1. TOP 4 KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <MetricCard
+          title="Revenue at Risk"
+          value={`INR ${kpis.revenue_at_risk.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          change="Pending Recovery"
+          isPositive={false}
+          subtitle="Failed payments requiring agent recovery"
+          icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
+        />
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button
-              id="test-connection-btn"
-              onClick={() => {
-                onRefresh();
-                loadRecoveryData();
-              }}
-              disabled={loading || loadingData}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading || loadingData ? 'animate-spin' : ''}`} />
-              <span>{loading || loadingData ? 'Syncing...' : 'Sync Live Data'}</span>
-            </button>
-          </div>
-        </div>
+        <MetricCard
+          title="Revenue Recovered"
+          value={`INR ${kpis.revenue_recovered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          change="+34.2%"
+          isPositive={true}
+          subtitle="Successfully recaptured via AI retries & dunning"
+          icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
+        />
+
+        <MetricCard
+          title="Recovery Rate %"
+          value={`${kpis.recovery_rate}%`}
+          change="+8.6% vs benchmark"
+          isPositive={true}
+          subtitle="Autonomous recovery pipeline effectiveness"
+          icon={<TrendingUp className="w-5 h-5 text-indigo-400" />}
+        />
+
+        <MetricCard
+          title="Active Retries"
+          value={`${kpis.active_retries} In Queue`}
+          change="Polling 60s"
+          isPositive={true}
+          subtitle="Autonomous scheduler retry queue"
+          icon={<RefreshCw className="w-5 h-5 text-sky-400" />}
+        />
       </div>
 
-      {/* Connectivity Diagnostic Panel */}
-      <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-6 shadow-xl backdrop-blur-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-          <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-              <Server className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                FastAPI Backend & Autonomous Engine
-                {isConnected ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-rose-400" />
-                )}
-              </h2>
-              <p className="text-xs text-slate-400">
-                Target endpoint: <code className="text-indigo-300 bg-slate-800/80 px-1.5 py-0.5 rounded font-mono">{API_BASE_URL}/api/health</code>
-              </p>
-            </div>
+      {/* 2. RECHARTS LINE CHART: RECOVERY RATE OVER TIME */}
+      <section className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6 shadow-xl backdrop-blur-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-indigo-400" />
+              Autonomous Recovery Rate Over Time
+            </h2>
+            <p className="text-xs text-slate-400">
+              Daily percentage of failed transaction volume recovered by the orchestration agent
+            </p>
           </div>
-
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Last checked: {lastChecked ? lastChecked.toLocaleTimeString() : 'Never'}</span>
+            <span className="flex items-center gap-1.5 text-xs text-indigo-400 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" /> Recovery Rate %
+            </span>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono">
+              Past 7 Days
             </span>
           </div>
         </div>
 
-        {error ? (
-          <div className="mt-6 rounded-xl bg-rose-950/40 border border-rose-800/60 p-4 text-rose-300 text-sm flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Backend Unreachable</p>
-              <p className="text-xs text-rose-300/80 mt-1">{error}</p>
-              <p className="text-xs text-slate-400 mt-2">
-                Make sure the FastAPI backend is running on <code className="text-white font-mono">http://localhost:8000</code>.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4">
-              <span className="text-xs font-medium text-slate-400">Microservice</span>
-              <p className="mt-1 text-sm font-semibold text-white font-mono">
-                {healthData?.service || 'Connecting...'}
-              </p>
-              <span className="mt-1 inline-block text-[11px] text-emerald-400 font-semibold">
-                ● Status: {healthData?.status || 'Unknown'}
-              </span>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4">
-              <span className="text-xs font-medium text-slate-400">Response Latency</span>
-              <p className="mt-1 text-2xl font-bold text-white">
-                {latencyMs !== null ? `${latencyMs} ms` : '--'}
-              </p>
-              <span className="text-[11px] text-slate-400">Round-trip HTTP ping</span>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4">
-              <span className="text-xs font-medium text-slate-400">Environment</span>
-              <p className="mt-1 text-sm font-semibold text-indigo-300 capitalize">
-                {healthData?.environment || 'Development'}
-              </p>
-              <span className="text-[11px] text-slate-400">API Version: {healthData?.version || '0.1.0'}</span>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4">
-              <span className="text-xs font-medium text-slate-400">Scheduler Status</span>
-              <p className="mt-1 text-sm font-semibold text-emerald-400 flex items-center gap-1.5">
-                <Zap className="w-4 h-4" />
-                Active (60s Polling)
-              </p>
-              <span className="text-[11px] text-slate-500">Autonomous retry worker</span>
-            </div>
-          </div>
-        )}
-
-        {/* Integration Statuses */}
-        <div className="mt-6 border-t border-slate-800 pt-5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-            Active Connectors & Pipelines
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-              <div className="flex items-center gap-2.5">
-                <CreditCard className="w-4 h-4 text-sky-400" />
-                <span className="text-xs font-medium text-slate-200">Razorpay Gateway</span>
-              </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {healthData?.features?.razorpay_configured ? 'Active & Verified' : 'Placeholder Ready'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-              <div className="flex items-center gap-2.5">
-                <Database className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-medium text-slate-200">Supabase Remote Sync</span>
-              </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {healthData?.features?.supabase_configured ? 'Connected & Live' : 'Offline / Local'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-800/60">
-              <div className="flex items-center gap-2.5">
-                <BrainCircuit className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium text-slate-200">Orchestrator Agent</span>
-              </div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {healthData?.features?.gemini_agent_configured ? 'Decision Matrix Active' : 'Ready'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Payload Viewer Accordion */}
-        <div className="mt-6 border-t border-slate-800 pt-4">
-          <button
-            id="toggle-raw-json-btn"
-            onClick={() => setShowRawJson(!showRawJson)}
-            className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
-          >
-            <Code2 className="w-4 h-4" />
-            <span>{showRawJson ? 'Hide Raw System Health JSON' : 'Inspect System Health JSON'}</span>
-            {showRawJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-
-          {showRawJson && (
-            <div className="mt-3 rounded-xl bg-slate-950 border border-slate-800 p-4 font-mono text-xs text-emerald-300 overflow-x-auto">
-              <pre>{JSON.stringify(healthData || { error: error || 'No data' }, null, 2)}</pre>
-            </div>
-          )}
+        {/* Recharts Container */}
+        <div className="h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <XAxis
+                dataKey="date"
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={{ stroke: '#334155' }}
+              />
+              <YAxis
+                stroke="#64748b"
+                fontSize={12}
+                domain={[0, 100]}
+                unit="%"
+                tickLine={false}
+                axisLine={{ stroke: '#334155' }}
+              />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const dataPoint = payload[0].payload;
+                    return (
+                      <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 shadow-2xl text-xs space-y-1">
+                        <p className="font-bold text-slate-200">{dataPoint.full_date || label}</p>
+                        <p className="text-indigo-400 font-semibold">
+                          Recovery Rate: <strong className="text-white text-sm">{dataPoint.recovery_rate}%</strong>
+                        </p>
+                        <p className="text-slate-400">
+                          Recovered: INR {dataPoint.revenue_recovered?.toLocaleString()}
+                        </p>
+                        <p className="text-slate-500">
+                          At Risk: INR {dataPoint.revenue_at_risk?.toLocaleString()}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="recovery_rate"
+                name="Recovery Rate"
+                stroke="#818cf8"
+                strokeWidth={3}
+                dot={{ r: 4, fill: '#6366f1', stroke: '#1e1b4b', strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: '#a5b4fc', stroke: '#4f46e5', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </section>
 
-      {/* Demo Simulation Bar */}
-      <section className="rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-900 border border-indigo-500/30 p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-500/20 pb-4">
+      {/* 3. 1-CLICK INTERACTIVE FAILURE SIMULATION BAR */}
+      <section className="rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Play className="w-5 h-5 text-indigo-400" />
-              Interactive Failure Simulator & Agent Trigger
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-400" />
+              Live Gateway Failure Simulator
             </h2>
-            <p className="text-xs text-slate-300 mt-1">
-              Trigger realistic payment failure events without real card declines. The Orchestrator will classify the error and execute rule-based dunning decisions.
+            <p className="text-xs text-slate-400">
+              Trigger instant Razorpay payment failure payloads to test AI classification, Orchestration agent, and Gemini Dunning
             </p>
           </div>
           {simulating && (
-            <div className="text-xs text-indigo-400 flex items-center gap-2 animate-pulse">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Analyzing failure with Orchestrator Agent...</span>
-            </div>
+            <span className="inline-flex items-center gap-2 text-xs text-amber-300 font-mono animate-pulse">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              Evaluating Agent Action...
+            </span>
           )}
         </div>
 
         {simulationResult && (
-          <div className="mt-4 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-200">
-            <span className="font-semibold text-indigo-300">Latest Orchestrator Output: </span>
-            {simulationResult}
+          <div className="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 flex items-start justify-between gap-3">
+            <span>{simulationResult}</span>
+            <button
+              onClick={() => setSimulationResult(null)}
+              className="text-slate-400 hover:text-white text-xs cursor-pointer"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <button
             onClick={() =>
               handleSimulate({
-                name: 'Ananya Sharma',
-                email: 'ananya@techcorp.in',
+                name: 'Kavita Verma',
+                email: 'kavita.verma@example.com',
                 amount: 499900,
                 code: 'BAD_REQUEST_ERROR',
-                desc: 'Account balance insufficient for invoice charge',
+                desc: 'Payment was declined due to insufficient funds in account',
                 reason: 'insufficient_funds',
               })
             }
             disabled={simulating}
-            className="flex flex-col items-start p-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer"
+            className="p-3.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer flex flex-col justify-between"
           >
-            <span className="text-xs font-semibold text-sky-400 group-hover:text-sky-300">1. Insufficient Funds</span>
-            <span className="text-[11px] text-slate-400 mt-1">INR 4,999.00</span>
-            <span className="text-[10px] text-slate-500 mt-2 font-mono">Expect: retry_later (48h)</span>
+            <div>
+              <span className="text-xs font-bold text-amber-400 group-hover:text-amber-300 block">1. Insufficient Funds</span>
+              <span className="text-[11px] text-slate-400 mt-0.5 block">INR 4,999.00</span>
+            </div>
+            <span className="text-[10px] text-slate-500 mt-2 font-mono">Agent: retry_later (2-3d)</span>
           </button>
 
           <button
             onClick={() =>
               handleSimulate({
-                name: 'Vikram Mehta',
-                email: 'vikram@mehta-holdings.com',
-                amount: 1250000,
-                code: 'EXPIRED_CARD',
-                desc: 'Card validity expired on 08/26',
+                name: 'Priya Sharma',
+                email: 'priya.sharma@example.com',
+                amount: 249900,
+                code: 'CARD_EXPIRED',
+                desc: 'The card has expired and cannot be charged',
                 reason: 'expired_card',
               })
             }
             disabled={simulating}
-            className="flex flex-col items-start p-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-amber-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer"
+            className="p-3.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-indigo-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer flex flex-col justify-between"
           >
-            <span className="text-xs font-semibold text-amber-400 group-hover:text-amber-300">2. Expired Card</span>
-            <span className="text-[11px] text-slate-400 mt-1">INR 12,500.00</span>
-            <span className="text-[10px] text-slate-500 mt-2 font-mono">Expect: notify_customer</span>
+            <div>
+              <span className="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 block">2. Expired Card</span>
+              <span className="text-[11px] text-slate-400 mt-0.5 block">INR 2,499.00</span>
+            </div>
+            <span className="text-[10px] text-slate-500 mt-2 font-mono">Agent: notify_customer (Gemini)</span>
           </button>
 
           <button
             onClick={() =>
               handleSimulate({
-                name: 'Rohan Gupta',
-                email: 'rohan@startuply.io',
-                amount: 899900,
-                code: 'BANK_DECLINE',
-                desc: 'Issuer decline: do_not_honor',
+                name: 'Rajesh Enterprises',
+                email: 'finance@rajeshent.in',
+                amount: 1450000,
+                code: 'BANK_POLICY_DECLINE',
+                desc: 'Transaction declined by customer bank risk policy',
                 reason: 'bank_decline',
               })
             }
             disabled={simulating}
-            className="flex flex-col items-start p-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer"
+            className="p-3.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-purple-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer flex flex-col justify-between"
           >
-            <span className="text-xs font-semibold text-blue-400 group-hover:text-blue-300">3. Bank Decline</span>
-            <span className="text-[11px] text-slate-400 mt-1">INR 8,999.00</span>
-            <span className="text-[10px] text-slate-500 mt-2 font-mono">Expect: retry_later (6h)</span>
+            <div>
+              <span className="text-xs font-bold text-purple-400 group-hover:text-purple-300 block">3. Bank Decline</span>
+              <span className="text-[11px] text-slate-400 mt-0.5 block">INR 14,500.00</span>
+            </div>
+            <span className="text-[10px] text-slate-500 mt-2 font-mono">Agent: retry_later in 6h</span>
           </button>
 
           <button
             onClick={() =>
               handleSimulate({
-                name: 'Pooja Iyer',
-                email: 'pooja@cloudscale.net',
+                name: 'Neha Kapoor',
+                email: 'neha.k@example.com',
                 amount: 349900,
                 code: 'GATEWAY_TIMEOUT',
-                desc: 'Upstream gateway network timed out during 3DS',
+                desc: 'Issuer switch timeout on 3DS verification socket',
                 reason: 'network_error',
               })
             }
             disabled={simulating}
-            className="flex flex-col items-start p-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer"
+            className="p-3.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-sky-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer flex flex-col justify-between"
           >
-            <span className="text-xs font-semibold text-indigo-400 group-hover:text-indigo-300">4. Network Timeout</span>
-            <span className="text-[11px] text-slate-400 mt-1">INR 3,499.00</span>
-            <span className="text-[10px] text-slate-500 mt-2 font-mono">Expect: retry_now (5-15m)</span>
+            <div>
+              <span className="text-xs font-bold text-sky-400 group-hover:text-sky-300 block">4. Network Error</span>
+              <span className="text-[11px] text-slate-400 mt-0.5 block">INR 3,499.00</span>
+            </div>
+            <span className="text-[10px] text-slate-500 mt-2 font-mono">Agent: retry_now (5m)</span>
           </button>
 
           <button
             onClick={() =>
               handleSimulate({
-                name: 'Suspicious Entity',
+                name: 'High Risk Corp',
                 email: 'flagged_user@darkmail.ru',
                 amount: 9999900,
                 code: 'FRAUD_FLAG',
@@ -449,303 +360,120 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               })
             }
             disabled={simulating}
-            className="flex flex-col items-start p-3.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-rose-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer"
+            className="p-3.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-rose-500/40 text-left transition-all group disabled:opacity-50 cursor-pointer flex flex-col justify-between"
           >
-            <span className="text-xs font-semibold text-rose-400 group-hover:text-rose-300">5. Risk & Fraud Block</span>
-            <span className="text-[11px] text-slate-400 mt-1">INR 99,999.00</span>
-            <span className="text-[10px] text-slate-500 mt-2 font-mono">Expect: escalate (manual)</span>
+            <div>
+              <span className="text-xs font-bold text-rose-400 group-hover:text-rose-300 block">5. Risk & Fraud Block</span>
+              <span className="text-[11px] text-slate-400 mt-0.5 block">INR 99,999.00</span>
+            </div>
+            <span className="text-[10px] text-slate-500 mt-2 font-mono">Agent: escalate (manual)</span>
           </button>
         </div>
       </section>
 
-      {/* Two Column Layout: Agent Transparency vs Retry Queue */}
+      {/* 4. AGENT DECISIONS & RETRY EXECUTION FEED PREVIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Agent Transparency View */}
-        <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-6 shadow-xl backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-purple-400" />
-                Agent Transparency & Reasoning
-              </h2>
-              <p className="text-xs text-slate-400">
-                Auditable decision log from <code className="text-purple-300 font-mono">recovery_actions</code>
-              </p>
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30 font-semibold">
-              {actions.length} Decisions Logged
-            </span>
-          </div>
-
-          <div className="space-y-3.5 overflow-y-auto max-h-[520px] pr-1">
-            {actions.length === 0 ? (
-              <div className="text-center py-12 text-slate-500 text-sm">
-                No recovery agent actions recorded yet. Trigger a simulated failure above!
-              </div>
-            ) : (
-              actions.map((act) => (
-                <div
-                  key={act.id}
-                  className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4 hover:border-slate-700 transition-all space-y-2.5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase border ${getActionBadge(
-                          act.action_type
-                        )}`}
-                      >
-                        {act.action_type}
-                      </span>
-                      {act.payment_id && (
-                        <span className="text-xs font-mono text-slate-400 truncate max-w-[160px]">
-                          {act.payment_id}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-slate-500">
-                      {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800/40">
-                    <span className="text-indigo-400 font-semibold">AI Reasoning: </span>
-                    {act.agent_reasoning}
-                  </p>
-
-                  {act.amount !== undefined && (
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                      <span>Amount: <strong className="text-white">{act.currency} {act.amount?.toLocaleString()}</strong></span>
-                      <span className="font-mono text-[10px] text-slate-500">ID: {act.id.slice(0, 8)}...</span>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Smart Retry Schedule & Execution Queue */}
-        <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-6 shadow-xl backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-sky-400" />
-                Scheduled Retries & Execution Queue
-              </h2>
-              <p className="text-xs text-slate-400">
-                Managed by <code className="text-sky-300 font-mono">retry_attempts</code> & 60s Scheduler
-              </p>
-            </div>
-            <button
-              onClick={handleTriggerRetries}
-              disabled={executingRetries}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-200 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/30 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Play className={`w-3.5 h-3.5 ${executingRetries ? 'animate-spin' : ''}`} />
-              <span>{executingRetries ? 'Executing...' : 'Run Due Retries'}</span>
-            </button>
-          </div>
-
-          {execResult && (
-            <div className="mb-3 p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-xs text-sky-300">
-              {execResult}
-            </div>
-          )}
-
-          <div className="space-y-3.5 overflow-y-auto max-h-[520px] pr-1">
-            {retries.length === 0 ? (
-              <div className="text-center py-12 text-slate-500 text-sm">
-                No retry attempts in queue.
-              </div>
-            ) : (
-              retries.map((r) => (
-                <div
-                  key={r.id}
-                  className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4 hover:border-slate-700 transition-all space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white px-2 py-0.5 rounded bg-slate-800">
-                        Attempt #{r.attempt_number}
-                      </span>
-                      <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${getOutcomeBadge(
-                          r.outcome
-                        )}`}
-                      >
-                        {r.outcome.toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {r.method}
-                    </span>
-                  </div>
-
-                  <div className="text-xs text-slate-300 grid grid-cols-2 gap-2 pt-1 border-t border-slate-900">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Scheduled For</span>
-                      <span className="font-mono text-slate-200">
-                        {new Date(r.scheduled_at).toLocaleString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Executed At</span>
-                      <span className="font-mono text-slate-200">
-                        {r.executed_at ? new Date(r.executed_at).toLocaleTimeString() : 'Pending Execution'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {r.payment_id && (
-                    <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-                      <span>Target: <code className="text-slate-300">{r.payment_id}</code></span>
-                      {r.amount && <span>{r.currency} {r.amount}</span>}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* Gemini Adaptive Recovery Messaging Feed */}
-      <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-6 shadow-xl backdrop-blur-sm">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+        {/* Agent Decisions */}
+        <section className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6 shadow-xl flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              Gemini Recovery Messages
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-medium">
-                Adaptive Tone (B2C / B2B)
-              </span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Personalized customer notifications generated with Gemini 3.6 Flash and recorded in <code className="text-amber-300 font-mono">recovery_messages</code>
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">
-              MOCK_MODE: ACTIVE
-            </span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
-              {messages.length} Dispatched
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {messages.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-slate-500 text-sm">
-              No recovery messages sent yet. Trigger the "Expired or Invalid Card" simulation above to test Gemini generation!
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <BrainCircuit className="w-5 h-5 text-purple-400" />
+                  Recent Agent Decisions
+                </h3>
+                <p className="text-xs text-slate-400">Auditable reasoning log</p>
+              </div>
+              <Link
+                to="/transactions"
+                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+              >
+                View All <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-          ) : (
-            messages.map((msg) => {
-              const isB2B = (msg.customer_segment || '').toLowerCase() === 'b2b';
-              return (
-                <div
-                  key={msg.id}
-                  className="rounded-xl bg-slate-950/70 border border-slate-800/90 p-4 hover:border-amber-500/30 transition-all flex flex-col justify-between space-y-3 group"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
-                            isB2B
-                              ? 'bg-purple-950/80 text-purple-300 border border-purple-800/60'
-                              : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
-                          }`}
-                        >
-                          {isB2B ? 'B2B (Formal)' : 'B2C (Friendly)'}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase font-mono flex items-center gap-1">
-                          <Mail className="w-2.5 h-2.5" />
-                          {msg.channel}
-                        </span>
-                      </div>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {actions.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-xs">
+                  No decisions logged yet. Run a simulation scenario above!
+                </div>
+              ) : (
+                actions.slice(0, 4).map((a) => (
+                  <div key={a.id} className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 rounded font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {a.action_type}
+                      </span>
                       <span className="text-[10px] text-slate-500">
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {a.created_at ? new Date(a.created_at).toLocaleTimeString() : ''}
                       </span>
                     </div>
-
-                    <div className="pt-1">
-                      <div className="text-xs font-semibold text-white truncate">
-                        {msg.customer_name || 'Customer'}
-                      </div>
-                      <div className="text-[11px] text-slate-400 truncate font-mono">
-                        {msg.customer_email || 'customer@example.com'}
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed bg-slate-900/80 p-3 rounded-lg border border-slate-800/50 max-h-44 overflow-y-auto text-[11px]">
-                      {msg.content}
-                    </div>
+                    <p className="text-xs text-slate-300 line-clamp-2">
+                      {a.agent_reasoning}
+                    </p>
                   </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
 
-                  <div className="pt-2 border-t border-slate-900/90 flex items-center justify-between text-[10px] text-slate-500">
-                    <span>Tx: <code className="text-slate-400">{msg.payment_id || msg.transaction_id.slice(0, 8)}</code></span>
-                    <span className="font-mono text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Logged
+        {/* Retry Queue Quick Runner */}
+        <section className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <History className="w-5 h-5 text-sky-400" />
+                  Scheduled Retries Queue
+                </h3>
+                <p className="text-xs text-slate-400">Autonomous retry scheduler queue</p>
+              </div>
+              <button
+                onClick={handleTriggerRetries}
+                disabled={executingRetries}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-200 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/30 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Play className={`w-3.5 h-3.5 ${executingRetries ? 'animate-spin' : ''}`} />
+                <span>{executingRetries ? 'Executing...' : 'Run Due Now'}</span>
+              </button>
+            </div>
+
+            {execResult && (
+              <div className="mb-3 p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-xs text-sky-300">
+                {execResult}
+              </div>
+            )}
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {retries.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-xs">
+                  Retry queue is clear.
+                </div>
+              ) : (
+                retries.slice(0, 4).map((r) => (
+                  <div key={r.id} className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">Attempt #{r.attempt_number}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded font-mono uppercase bg-slate-800 text-sky-300">
+                          {r.outcome}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        Method: {r.method} • Target: {r.payment_id || r.transaction_id.slice(0, 8)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {new Date(r.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
-
-      {/* Metric Cards Summary */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white">Recovery Performance Snapshot</h2>
-            <p className="text-xs text-slate-400">Live indicators based on autonomous orchestrator decisions</p>
+                ))
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Recovered Revenue"
-            value="INR 34,990"
-            change="+28.4%"
-            isPositive={true}
-            subtitle="Recovered through smart retry rules"
-            icon={<DollarSign className="w-5 h-5" />}
-          />
-          <MetricCard
-            title="Recovery Success Rate"
-            value="82.5%"
-            change="+6.1%"
-            isPositive={true}
-            subtitle="Avg recovery rate for failed cards"
-            icon={<TrendingUp className="w-5 h-5" />}
-          />
-          <MetricCard
-            title="Agent Decisions"
-            value={`${actions.length} Executed`}
-            change="Active"
-            isPositive={true}
-            subtitle="Autonomous actions evaluated"
-            icon={<Cpu className="w-5 h-5" />}
-          />
-          <MetricCard
-            title="Active Retry Queue"
-            value={`${retries.filter((r) => r.outcome === 'pending').length} Pending`}
-            change="In Flight"
-            isPositive={true}
-            subtitle="Scheduled across 6h & 48h windows"
-            icon={<Activity className="w-5 h-5" />}
-          />
-        </div>
+        </section>
       </div>
-    </main>
+    </div>
   );
 };
