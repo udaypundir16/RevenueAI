@@ -7,7 +7,10 @@ import {
   Eye,
   CreditCard,
   BrainCircuit,
+  AlertTriangle,
+  Play,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   type TransactionItem,
   fetchTransactions,
@@ -17,6 +20,7 @@ import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 export const TransactionsPage: React.FC = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -27,6 +31,7 @@ export const TransactionsPage: React.FC = () => {
   const loadTransactions = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await fetchTransactions({
         status: statusFilter || undefined,
         category: categoryFilter || undefined,
@@ -34,8 +39,9 @@ export const TransactionsPage: React.FC = () => {
         limit: 100,
       });
       setTransactions(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load transactions:', err);
+      setError(err.message || 'Failed to load transactions from backend');
     } finally {
       setLoading(false);
     }
@@ -171,6 +177,22 @@ export const TransactionsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={loadTransactions}
+            className="px-3 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-xs font-semibold text-white transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Table Container */}
       <div className="rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
@@ -206,15 +228,36 @@ export const TransactionsPage: React.FC = () => {
             <tbody className="divide-y divide-slate-800/60">
               {loading && transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin mx-auto mb-2" />
-                    Loading transactions...
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin mx-auto mb-3" />
+                    <span className="text-sm font-medium">Loading transactions from database...</span>
                   </td>
                 </tr>
               ) : sortedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
-                    No transactions matched your criteria.
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                    <div className="max-w-md mx-auto space-y-3 px-4">
+                      <CreditCard className="w-10 h-10 text-slate-600 mx-auto" />
+                      <p className="text-base font-semibold text-white">
+                        {search || statusFilter || categoryFilter
+                          ? 'No transactions matched your active filters.'
+                          : 'No failed transactions yet — run the demo simulator'}
+                      </p>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        {search || statusFilter || categoryFilter
+                          ? 'Try clearing or changing your search terms or classification filters.'
+                          : 'Stream live payment failure events into the pipeline to test autonomous classification, orchestration, and recovery.'}
+                      </p>
+                      <div className="pt-2">
+                        <Link
+                          to="/"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-all shadow-lg shadow-indigo-600/30 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          Run Demo Simulator on Dashboard
+                        </Link>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (

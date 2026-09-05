@@ -6,6 +6,7 @@ import {
   Sparkles,
   CheckCircle2,
   Filter,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   type RecoveryMessageItem,
@@ -16,16 +17,19 @@ import { Link } from 'react-router-dom';
 export const MessagesPage: React.FC = () => {
   const [messages, setMessages] = useState<RecoveryMessageItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [segmentFilter, setSegmentFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
 
   const loadMessages = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await fetchRecoveryMessages(50);
       setMessages(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load messages:', err);
+      setError(err.message || 'Failed to fetch recovery messages');
     } finally {
       setLoading(false);
     }
@@ -70,6 +74,22 @@ export const MessagesPage: React.FC = () => {
           <span>Refresh Messages</span>
         </button>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={loadMessages}
+            className="px-3 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-xs font-semibold text-white transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* KPI & Mode Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

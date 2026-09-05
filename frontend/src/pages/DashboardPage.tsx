@@ -48,6 +48,8 @@ export const DashboardPage: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
   const [executingRetries, setExecutingRetries] = useState(false);
   const [execResult, setExecResult] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState<boolean>(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   // Demo Simulation Stream States
   const [streamCount, setStreamCount] = useState<number>(5);
@@ -58,6 +60,8 @@ export const DashboardPage: React.FC = () => {
 
   const loadData = async () => {
     try {
+      setDataLoading(true);
+      setDashboardError(null);
       const [summaryRes, actionsRes, retriesRes] = await Promise.all([
         fetchDashboardSummary(),
         fetchRecoveryActions(10),
@@ -66,8 +70,11 @@ export const DashboardPage: React.FC = () => {
       setSummaryData(summaryRes);
       setActions(actionsRes);
       setRetries(retriesRes);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load dashboard data:', err);
+      setDashboardError(err.message || 'Failed to connect to backend service');
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -144,6 +151,38 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* Error Alert */}
+      {dashboardError && (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-200 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{dashboardError}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-800 text-xs font-semibold text-white transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Top Status & Sync Bar */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs text-slate-400">
+            Autonomous Pipeline: <strong className="text-emerald-400">Online & Active</strong>
+          </span>
+        </div>
+        {dataLoading && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-indigo-300 font-mono">
+            <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
+            Syncing live metrics...
+          </span>
+        )}
+      </div>
+
       {/* 1. TOP 4 KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <MetricCard
