@@ -51,13 +51,16 @@ revenue-recovery-ai/
 | `RAZORPAY_KEY_SECRET` | Razorpay Key Secret |
 | `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Signing Secret |
 | `SUPABASE_URL` | Supabase Project URL |
-| `SUPABASE_KEY` | Supabase Service / Anon API Key |
+| `SUPABASE_ANON_KEY` | Supabase Anonymous Client API Key |
+| `SUPABASE_SECRET_KEY` | Supabase Service Role / Secret API Key |
 | `GEMINI_API_KEY` | Google Gemini AI API Key |
 
 ### Frontend (`/frontend/.env.example`)
 | Variable | Description |
 |---|---|
 | `VITE_API_BASE_URL` | Base URL of backend API (e.g. `http://localhost:8000`) |
+| `VITE_SUPABASE_URL` | Supabase Project URL for frontend SDK |
+| `VITE_SUPABASE_ANON_KEY` | Supabase Anonymous Client API Key |
 
 ---
 

@@ -25,6 +25,8 @@ venv/
 .venv/
 ENV/
 env/
+*.sqlite3
+*.db
 
 # Node
 node_modules/
