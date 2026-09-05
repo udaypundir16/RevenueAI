@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.health import router as health_router
 from routes.webhooks import router as webhooks_router
+from routes.recovery import router as recovery_router
 from db.connection import init_db
+from services.scheduler import retry_scheduler
 
 # Load environment variables
 env_path = Path(__file__).resolve().parent / ".env"
@@ -27,8 +29,22 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables verified.")
     except Exception as e:
         logger.warning(f"Database initialization deferred: {e}")
+
+    # Start background retry polling scheduler
+    try:
+        retry_scheduler.start()
+        logger.info("Autonomous RetryScheduler activated.")
+    except Exception as sched_err:
+        logger.error(f"Failed to start RetryScheduler: {sched_err}")
+
     yield
+
     # Shutdown
+    try:
+        retry_scheduler.stop()
+        logger.info("Autonomous RetryScheduler deactivated.")
+    except Exception as e:
+        logger.warning(f"Error stopping RetryScheduler: {e}")
 
 app = FastAPI(
     title="Revenue Recovery AI API",
@@ -52,6 +68,7 @@ app.add_middleware(
 # Register routes
 app.include_router(health_router)
 app.include_router(webhooks_router)
+app.include_router(recovery_router)
 
 @app.get("/")
 def root():
@@ -59,7 +76,10 @@ def root():
         "message": "Welcome to Revenue Recovery AI API",
         "docs_url": "/docs",
         "health_check": "/api/health",
-        "webhooks": "/api/webhooks/razorpay"
+        "webhooks": "/api/webhooks/razorpay",
+        "simulation": "/simulate/failure",
+        "agent_transparency": "/api/recovery/actions",
+        "retries": "/api/recovery/retries"
     }
 
 if __name__ == "__main__":

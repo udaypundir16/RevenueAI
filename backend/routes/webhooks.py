@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from dotenv import dotenv_values
 
 from db.connection import get_db
-from models.db_models import Customer, Transaction
+from models.db_models import Customer, Transaction, RetryAttempt
 
 logger = logging.getLogger("revenue-recovery-ai.webhooks")
 
@@ -234,6 +234,23 @@ def process_and_persist_failure(
         is_simulation=is_simulation
     )
 
+    # 5. Autonomous Recovery Orchestrator Agent Decision & Persistence
+    orchestration_data = None
+    try:
+        from agents.orchestrator import decide_action, record_orchestrator_decision
+        past_attempts = db.query(RetryAttempt).filter(RetryAttempt.transaction_id == transaction.id).all()
+        decision = decide_action(transaction=transaction, customer=customer, past_attempts=past_attempts)
+        orchestration_data = record_orchestrator_decision(
+            transaction_id=transaction.id,
+            decision=decision,
+            db=db,
+            customer_id=customer.id,
+            supabase_transaction_id=supabase_record_id,
+            razorpay_payment_id=payment_id
+        )
+    except Exception as orch_err:
+        logger.error(f"Orchestration agent decision error: {orch_err}")
+
     return {
         "status": "success",
         "event": event_type,
@@ -247,6 +264,7 @@ def process_and_persist_failure(
         "transaction_status": "failed",
         "failure_reason_raw": failure_reason_raw,
         "is_simulation": is_simulation,
+        "orchestration": orchestration_data,
     }
 
 # ============================================================================
