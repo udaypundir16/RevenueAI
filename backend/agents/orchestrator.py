@@ -328,7 +328,7 @@ def record_orchestrator_decision(
                     customer=cust_obj,
                     transaction=tx_obj,
                     db=db,
-                    supabase_tx_id=sb_action_id or (remote_tx_id if 'remote_tx_id' in locals() else None)
+                    supabase_tx_id=remote_tx_id if ('remote_tx_id' in locals() and remote_tx_id) else supabase_transaction_id
                 )
         except Exception as msg_err:
             logger.error(f"Automatic messenger notification failed: {msg_err}")

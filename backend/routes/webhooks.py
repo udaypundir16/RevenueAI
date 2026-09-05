@@ -110,6 +110,11 @@ def process_and_persist_failure(
             or payment_entity.get("name")
             or "Customer"
         )
+        customer_segment = (
+            payment_entity.get("notes", {}).get("segment")
+            or payment_entity.get("segment")
+            or ("b2b" if any(k in customer_name.lower() for k in ["corp", "ltd", "inc", "solutions", "hub", "enterprises", "ventures", "global"]) else "b2c")
+        )
         error_code = payment_entity.get("error_code") or "PAYMENT_FAILED"
         error_desc = payment_entity.get("error_description") or "Payment authorization declined"
         error_reason = payment_entity.get("error_reason") or "generic_decline"
@@ -127,6 +132,7 @@ def process_and_persist_failure(
         contact_email = subscription_entity.get("customer_email") or f"subscriber_{sub_id}@example.com"
         contact_phone = subscription_entity.get("customer_contact")
         customer_name = "Subscription Customer"
+        customer_segment = "b2b"
         error_code = "SUBSCRIPTION_CHARGE_FAILED"
         error_desc = "Scheduled recurring subscription charge failed"
         error_reason = "subscription_charge_failed"
@@ -140,6 +146,7 @@ def process_and_persist_failure(
         contact_email = payload.get("email", "demo.user@example.com")
         contact_phone = payload.get("contact", "+919876543210")
         customer_name = payload.get("customer_name", "Demo Customer")
+        customer_segment = payload.get("segment", "b2c")
         error_code = payload.get("error_code", "BAD_REQUEST_ERROR")
         error_desc = payload.get("error_description", "Card was declined due to insufficient funds")
         error_reason = payload.get("error_reason", "insufficient_funds")
@@ -155,13 +162,15 @@ def process_and_persist_failure(
             name=customer_name,
             email=contact_email,
             phone=contact_phone,
-            segment="b2c",
+            segment=customer_segment,
             risk_flag=True,
         )
         db.add(customer)
         db.flush()
     else:
         customer.risk_flag = True
+        if customer_segment:
+            customer.segment = customer_segment
 
     # 2. Upsert Transaction with status='failed'
     transaction = db.query(Transaction).filter(Transaction.razorpay_payment_id == payment_id).first()
@@ -371,7 +380,8 @@ async def simulate_payment_failure(
                         "email": payload.get("email", "john.developer@example.com"),
                         "contact": payload.get("contact", "+919876543210"),
                         "notes": {
-                            "customer_name": payload.get("customer_name", "John Developer")
+                            "customer_name": payload.get("customer_name", "John Developer"),
+                            "segment": payload.get("segment", "b2c")
                         }
                     }
                 }

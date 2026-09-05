@@ -10,6 +10,7 @@ from routes.webhooks import router as webhooks_router
 from routes.recovery import router as recovery_router
 from routes.dashboard import router as dashboard_router
 from routes.transactions import router as transactions_router
+from routes.demo import router as demo_router
 from db.connection import init_db
 from services.scheduler import retry_scheduler
 
@@ -73,6 +74,7 @@ app.include_router(webhooks_router)
 app.include_router(recovery_router)
 app.include_router(dashboard_router)
 app.include_router(transactions_router)
+app.include_router(demo_router)
 
 @app.get("/")
 def root():

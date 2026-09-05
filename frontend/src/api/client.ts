@@ -246,4 +246,44 @@ export async function simulateFailure(payload: SimulatePayload): Promise<any> {
   return res.json();
 }
 
+export interface DemoSimulationStepResult {
+  step: number;
+  payment_id: string;
+  transaction_id?: string;
+  customer: string;
+  email: string;
+  segment: string;
+  amount: number;
+  currency: string;
+  failure_reason_raw: string;
+  failure_reason_classified: string;
+  action: string;
+  reasoning: string;
+  has_message: boolean;
+  dunning_content?: string | null;
+  retry_scheduled: boolean;
+  scheduled_time?: string | null;
+  status: string;
+}
+
+export interface DemoSimulationResponse {
+  status: string;
+  total_simulated: number;
+  transactions: DemoSimulationStepResult[];
+  summary: {
+    total_at_risk_added: number;
+    action_counts: Record<string, number>;
+  };
+}
+
+export async function runDemoSimulation(count: number = 5, interval: number = 0.3): Promise<DemoSimulationResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/demo/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count, interval }),
+  });
+  if (!res.ok) throw new Error(`Failed to run demo simulation: ${res.statusText}`);
+  return res.json();
+}
+
 export { API_BASE_URL };
