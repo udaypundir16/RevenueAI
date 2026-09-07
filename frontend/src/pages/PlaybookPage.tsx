@@ -105,17 +105,17 @@ export const PlaybookPage: React.FC = () => {
     setEditingRuleId(null);
   };
 
-  const getActionBadge = (action: string) => {
+  const getActionStyle = (action: string): React.CSSProperties => {
     switch (action) {
       case 'retry_later':
       case 'retry_now':
-        return 'bg-sky-500/20 text-sky-300 border-sky-500/30';
+        return { background: 'var(--sky-muted)', color: 'var(--sky)', border: '1px solid var(--sky-border)' };
       case 'notify_customer':
-        return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+        return { background: 'var(--accent-muted)', color: 'var(--accent-hover)', border: '1px solid var(--accent-border)' };
       case 'escalate':
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+        return { background: 'var(--danger-muted)', color: 'var(--danger)', border: '1px solid var(--danger-border)' };
       default:
-        return 'bg-slate-800 text-slate-300 border-slate-700';
+        return { background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' };
     }
   };
 
@@ -124,76 +124,93 @@ export const PlaybookPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <SlidersHorizontal className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <SlidersHorizontal className="w-5 h-5" style={{ color: 'var(--accent-hover)' }} />
             Autonomous Recovery Playbook
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
             Phase 4 rule-based decision matrix mapping classified failures to optimal recovery actions
           </p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={resetDefaults}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Defaults</span>
-          </button>
-        </div>
+        <button
+          onClick={resetDefaults}
+          className="th-btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium self-start sm:self-auto"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset Defaults
+        </button>
       </div>
 
+      {/* Save Toast */}
       {saveToast && (
-        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-          <Check className="w-4 h-4 text-emerald-400" />
-          Playbook rules updated successfully. Live orchestrator will apply these parameters to subsequent gateway events.
+        <div className="p-3.5 rounded-xl th-alert-success flex items-center gap-2 text-sm">
+          <Check className="w-4 h-4 shrink-0" style={{ color: 'var(--success)' }} />
+          <span>Playbook rules updated. Live orchestrator will apply on subsequent gateway events.</span>
         </div>
       )}
 
       {/* Info Callout */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/30 flex items-start gap-3 shadow-md">
-        <Info className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-300 space-y-1">
-          <p className="font-semibold text-white">Rule Execution & Agent Autonomy</p>
-          <p className="text-slate-400 leading-relaxed">
+      <div
+        className="p-4 rounded-2xl flex items-start gap-3"
+        style={{
+          background: 'var(--accent-muted)',
+          border: '1px solid var(--accent-border)',
+        }}
+      >
+        <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--accent-hover)' }} />
+        <div className="text-xs space-y-1">
+          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Rule Execution & Agent Autonomy</p>
+          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             When Razorpay fires a payment failure webhook, the Orchestration Agent evaluates these decision rules
             against the classification engine's output. The decision reasoning is stored immutably in the{' '}
-            <code className="text-indigo-300 font-mono">recovery_actions</code> table for auditable transparency.
+            <code className="font-mono px-1 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--accent-hover)' }}>
+              recovery_actions
+            </code>{' '}
+            table for auditable transparency.
           </p>
         </div>
       </div>
 
       {/* Rules Table */}
-      <div className="rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden shadow-xl">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/90 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+            <thead className="th-table-head">
               <tr>
-                <th className="py-3.5 px-4">Failure Category</th>
-                <th className="py-3.5 px-4">Orchestrator Action</th>
-                <th className="py-3.5 px-4">Timing Strategy</th>
-                <th className="py-3.5 px-4">Max Retries</th>
-                <th className="py-3.5 px-4">Customer Dunning Channel</th>
-                <th className="py-3.5 px-4">Rationale</th>
-                <th className="py-3.5 px-4 text-right">Configure</th>
+                {['Failure Category', 'Orchestrator Action', 'Timing', 'Max Retries', 'Customer Dunning', 'Rationale', 'Configure'].map((h, i) => (
+                  <th
+                    key={h}
+                    className="py-3.5 px-4 text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: 'var(--text-tertiary)', textAlign: i === 6 ? 'right' : 'left' }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody>
               {rules.map((r) => {
                 const isEditing = editingRuleId === r.id;
 
                 if (isEditing) {
                   return (
-                    <tr key={r.id} className="bg-indigo-950/30">
-                      <td className="py-3.5 px-4 font-bold text-white uppercase font-mono">
+                    <tr key={r.id} className="th-table-row" style={{ background: 'var(--accent-muted)' }}>
+                      <td className="py-3.5 px-4 font-bold uppercase font-mono" style={{ color: 'var(--text-primary)' }}>
                         {r.failureType.replace('_', ' ')}
                       </td>
                       <td className="py-3.5 px-4">
                         <select
                           value={editForm.action}
                           onChange={(e) => setEditForm({ ...editForm, action: e.target.value as any })}
-                          className="bg-slate-950 border border-indigo-500/50 rounded-lg px-2 py-1 text-white text-xs"
+                          className="th-select px-2 py-1 text-xs"
+                          style={{ minWidth: 130 }}
                         >
                           <option value="retry_later">retry_later</option>
                           <option value="notify_customer">notify_customer</option>
@@ -206,7 +223,7 @@ export const PlaybookPage: React.FC = () => {
                           type="text"
                           value={editForm.timing}
                           onChange={(e) => setEditForm({ ...editForm, timing: e.target.value })}
-                          className="bg-slate-950 border border-indigo-500/50 rounded-lg px-2 py-1 text-white text-xs w-28"
+                          className="th-input px-2 py-1 text-xs w-28"
                         />
                       </td>
                       <td className="py-3.5 px-4">
@@ -214,7 +231,7 @@ export const PlaybookPage: React.FC = () => {
                           type="number"
                           value={editForm.maxAttempts}
                           onChange={(e) => setEditForm({ ...editForm, maxAttempts: parseInt(e.target.value) || 0 })}
-                          className="bg-slate-950 border border-indigo-500/50 rounded-lg px-2 py-1 text-white text-xs w-16"
+                          className="th-input px-2 py-1 text-xs w-16"
                         />
                       </td>
                       <td className="py-3.5 px-4">
@@ -222,22 +239,22 @@ export const PlaybookPage: React.FC = () => {
                           type="text"
                           value={editForm.customerNotification}
                           onChange={(e) => setEditForm({ ...editForm, customerNotification: e.target.value })}
-                          className="bg-slate-950 border border-indigo-500/50 rounded-lg px-2 py-1 text-white text-xs w-48"
+                          className="th-input px-2 py-1 text-xs w-48"
                         />
                       </td>
-                      <td className="py-3.5 px-4 text-slate-400">
+                      <td className="py-3.5 px-4" style={{ color: 'var(--text-secondary)' }}>
                         {r.description}
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
                         <button
                           onClick={saveEdit}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer"
+                          className="th-btn-primary px-2.5 py-1 text-xs"
                         >
                           Save
                         </button>
                         <button
                           onClick={cancelEdit}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+                          className="th-btn-ghost px-2.5 py-1 text-xs"
                         >
                           Cancel
                         </button>
@@ -247,34 +264,34 @@ export const PlaybookPage: React.FC = () => {
                 }
 
                 return (
-                  <tr key={r.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-white uppercase font-mono">
+                  <tr key={r.id} className="th-table-row">
+                    <td className="py-3.5 px-4 font-bold uppercase font-mono" style={{ color: 'var(--text-primary)' }}>
                       {r.failureType.replace('_', ' ')}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold uppercase border ${getActionBadge(r.action)}`}>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full font-bold uppercase text-[10px]" style={getActionStyle(r.action)}>
                         {r.action}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-300">
+                    <td className="py-3.5 px-4 font-mono" style={{ color: 'var(--text-secondary)' }}>
                       {r.timing}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-300">
+                    <td className="py-3.5 px-4 font-mono" style={{ color: 'var(--text-secondary)' }}>
                       {r.maxAttempts}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-300">
+                    <td className="py-3.5 px-4" style={{ color: 'var(--text-secondary)' }}>
                       {r.customerNotification}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-400 max-w-xs leading-relaxed">
+                    <td className="py-3.5 px-4 max-w-xs leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
                       {r.description}
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <button
                         onClick={() => startEdit(r)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs"
+                        className="th-btn-ghost inline-flex items-center gap-1 px-2.5 py-1 text-xs"
                       >
                         <Edit2 className="w-3 h-3" />
-                        <span>Edit</span>
+                        Edit
                       </button>
                     </td>
                   </tr>

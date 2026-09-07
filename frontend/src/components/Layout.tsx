@@ -27,24 +27,41 @@ export const Layout: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Title based on current route
   const getPageTitle = () => {
     switch (location.pathname) {
       case '/':
-        return 'Recovery Dashboard & Analytics';
+        return 'Dashboard';
       case '/transactions':
-        return 'Transactions & Audit Trail';
+        return 'Transactions';
       case '/playbook':
-        return 'Recovery Playbook Configuration';
+        return 'Playbook';
       case '/messages':
-        return 'Customer Recovery Messages';
+        return 'Messages';
       default:
-        return 'Revenue Recovery AI';
+        return 'RevenueAI';
+    }
+  };
+
+  const getPageSubtitle = () => {
+    switch (location.pathname) {
+      case '/':
+        return 'Recovery analytics & autonomous pipeline';
+      case '/transactions':
+        return 'Audit trail & agent decision log';
+      case '/playbook':
+        return 'Recovery decision rules configuration';
+      case '/messages':
+        return 'AI-generated customer dunning messages';
+      default:
+        return '';
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-row antialiased selection:bg-indigo-500 selection:text-white">
+    <div
+      className="min-h-screen flex flex-row antialiased"
+      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
+    >
       {/* Persistent Left Sidebar */}
       <Sidebar
         healthStatus={{
@@ -57,38 +74,61 @@ export const Layout: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-        {/* Top Header Bar */}
-        <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-8 flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-white tracking-tight">{getPageTitle()}</h1>
-            <span className="hidden sm:inline-block text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono">
-              v0.1.0 • Autonomous
-            </span>
+        {/* Top Header */}
+        <header
+          className="th-header h-14 px-8 flex items-center justify-between sticky top-0 z-20"
+          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+        >
+          <div>
+            <h1
+              className="text-base font-semibold tracking-tight leading-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {getPageTitle()}
+            </h1>
+            <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+              {getPageSubtitle()}
+            </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Live Agent Status Pill */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-white">Agents Active:</span>
-              <span className="text-slate-400">Orchestrator • Messenger</span>
+          <div className="flex items-center gap-3">
+            {/* Agents active pill */}
+            <div
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full animate-pulse-dot"
+                style={{ background: 'var(--success)' }}
+              />
+              <span style={{ color: 'var(--text-primary)' }} className="font-medium text-[11px]">Agents Active</span>
+              <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Orchestrator • Messenger</span>
             </div>
 
-            {/* Refresh button */}
+            {/* Sync button */}
             <button
               onClick={checkHealth}
               disabled={loadingHealth}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-medium text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+              className="th-btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
               title="Refresh System Health"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-indigo-400 ${loadingHealth ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sync</span>
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${loadingHealth ? 'animate-spin' : ''}`}
+                style={{ color: 'var(--accent-hover)' }}
+              />
+              <span className="hidden sm:inline font-medium">Sync</span>
             </button>
           </div>
         </header>
 
-        {/* Dynamic Route Content */}
-        <main className="flex-1 p-8 max-w-7xl w-full mx-auto">
+        {/* Route Content */}
+        <main
+          className="flex-1 px-8 py-7 max-w-7xl w-full mx-auto animate-fade-in"
+        >
           <Outlet />
         </main>
       </div>

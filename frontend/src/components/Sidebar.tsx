@@ -10,7 +10,10 @@ import {
   CreditCard,
   Database,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
   healthStatus?: {
@@ -22,60 +25,76 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ healthStatus }) => {
+  const { theme, toggleTheme } = useTheme();
+
   const navItems = [
     {
       to: '/',
       label: 'Dashboard',
-      description: 'KPIs & Recovery Trend',
       icon: LayoutDashboard,
       badge: 'Live',
     },
     {
       to: '/transactions',
       label: 'Transactions',
-      description: 'Audit & Agent Timeline',
       icon: ReceiptText,
       badge: null,
     },
     {
       to: '/playbook',
-      label: 'Playbook Config',
-      description: 'Recovery Decision Rules',
+      label: 'Playbook',
       icon: SlidersHorizontal,
-      badge: 'Rules',
+      badge: null,
     },
     {
       to: '/messages',
-      label: 'Customer Messages',
-      description: 'Adaptive Gemini Dunning',
+      label: 'Messages',
       icon: MessageSquareQuote,
       badge: null,
     },
   ];
 
   return (
-    <aside className="w-64 bg-slate-950/95 border-r border-slate-800 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30">
+    <aside
+      className="th-sidebar w-60 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30"
+      style={{ minWidth: 240 }}
+    >
       {/* Brand Header */}
-      <div>
-        <div className="p-5 border-b border-slate-800/80">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 ring-1 ring-white/20">
-              <Zap className="w-5 h-5 text-white" />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div
+          className="px-5 py-4 flex items-center gap-3"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          {/* Logo mark */}
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+            }}
+          >
+            <Zap className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-sm tracking-tight th-text-primary">RevenueAI</span>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
+                style={{
+                  background: 'var(--accent-muted)',
+                  color: 'var(--accent-hover)',
+                  border: '1px solid var(--accent-border)',
+                }}
+              >
+                Agent
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-white">RevenueAI</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                  AGENT
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">Autonomous Recovery</p>
-            </div>
+            <p className="text-[11px] th-text-tertiary font-medium mt-0.5">Autonomous Recovery</p>
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="p-3 space-y-1.5 mt-2">
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -84,37 +103,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ healthStatus }) => {
                 to={item.to}
                 end={item.to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-all group ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-600/20 to-purple-600/10 text-white border border-indigo-500/40 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent'
-                  }`
+                  `th-nav-item ${isActive ? 'th-nav-item-active' : ''} flex items-center justify-between px-3 py-2.5 text-sm font-medium`
                 }
               >
                 {({ isActive }) => (
                   <>
                     <div className="flex items-center gap-3">
                       <Icon
-                        className={`w-5 h-5 transition-colors ${
-                          isActive
-                            ? 'text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]'
-                            : 'text-slate-400 group-hover:text-slate-300'
-                        }`}
+                        className={`w-4 h-4 shrink-0 transition-colors`}
+                        style={{ color: isActive ? 'var(--accent-hover)' : 'var(--text-tertiary)' }}
                       />
-                      <div className="flex flex-col text-left">
-                        <span className="font-semibold text-xs tracking-wide">{item.label}</span>
-                        <span className="text-[10px] text-slate-500 font-normal leading-tight">
-                          {item.description}
-                        </span>
-                      </div>
+                      <span
+                        className="text-[13px] font-medium"
+                        style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                      >
+                        {item.label}
+                      </span>
                     </div>
                     {item.badge && (
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                        className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                        style={
                           isActive
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'
-                        }`}
+                            ? { background: 'var(--accent)', color: '#fff' }
+                            : { background: 'var(--bg-overlay)', color: 'var(--text-tertiary)' }
+                        }
                       >
                         {item.badge}
                       </span>
@@ -127,51 +140,101 @@ export const Sidebar: React.FC<SidebarProps> = ({ healthStatus }) => {
         </nav>
       </div>
 
-      {/* Integration & Agent Status Footer */}
-      <div className="p-4 border-t border-slate-800/80 bg-slate-950/60">
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-3 space-y-2">
+      {/* Footer: Status + Theme Toggle */}
+      <div
+        className="px-3 pb-4 pt-3 space-y-3"
+        style={{ borderTop: '1px solid var(--border-subtle)' }}
+      >
+        {/* System Health */}
+        <div
+          className="rounded-xl px-3 py-2.5 space-y-2"
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-emerald-400" />
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              <Activity className="w-3 h-3" style={{ color: 'var(--success)' }} />
               Engine Health
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
-              <span className={`w-1.5 h-1.5 rounded-full ${healthStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            <span
+              className="flex items-center gap-1 text-[10px] font-semibold"
+              style={{ color: 'var(--success)' }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full animate-pulse-dot"
+                style={{ background: 'var(--success)' }}
+              />
               {healthStatus?.connected ? 'Active' : 'Standby'}
             </span>
           </div>
-
-          <div className="space-y-1 pt-1 border-t border-slate-800/60 text-[10px]">
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="flex items-center gap-1 text-slate-400">
-                <CreditCard className="w-3 h-3 text-indigo-400" /> Razorpay
-              </span>
-              <span className={healthStatus?.razorpay ? 'text-emerald-400 font-mono' : 'text-slate-400 font-mono'}>
-                {healthStatus?.razorpay ? 'Connected' : 'Mock'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="flex items-center gap-1 text-slate-400">
-                <Database className="w-3 h-3 text-sky-400" /> Supabase
-              </span>
-              <span className={healthStatus?.supabase ? 'text-emerald-400 font-mono' : 'text-slate-400 font-mono'}>
-                {healthStatus?.supabase ? 'Synced' : 'Local'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="flex items-center gap-1 text-slate-400">
-                <Sparkles className="w-3 h-3 text-amber-400" /> Gemini Agent
-              </span>
-              <span className="text-amber-300 font-mono">3.6 Flash</span>
-            </div>
+          <div className="space-y-1.5" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 6 }}>
+            {[
+              { icon: CreditCard, label: 'Razorpay', value: healthStatus?.razorpay ? 'Connected' : 'Mock', ok: healthStatus?.razorpay, color: 'var(--accent-hover)' },
+              { icon: Database, label: 'Supabase', value: healthStatus?.supabase ? 'Synced' : 'Local', ok: healthStatus?.supabase, color: 'var(--sky)' },
+              { icon: Sparkles, label: 'Gemini', value: '3.6 Flash', ok: true, color: 'var(--warning)' },
+            ].map(({ icon: Icon, label, value, ok, color }) => (
+              <div key={label} className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+                  <Icon className="w-3 h-3" style={{ color }} />
+                  {label}
+                </span>
+                <span
+                  className="text-[10px] font-mono font-semibold"
+                  style={{ color: ok ? 'var(--success)' : 'var(--text-tertiary)' }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="mt-3 text-center">
-          <span className="text-[10px] text-slate-500 font-mono">
-            Hackathon Demo • Localhost Mode
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="th-btn-ghost w-full flex items-center justify-between px-3 py-2 text-xs"
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          <span className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+            {theme === 'dark' ? (
+              <Sun className="w-3.5 h-3.5" style={{ color: 'var(--warning)' }} />
+            ) : (
+              <Moon className="w-3.5 h-3.5" style={{ color: 'var(--accent-hover)' }} />
+            )}
+            <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
           </span>
-        </div>
+          {/* Toggle pill */}
+          <div
+            className="relative w-8 h-4.5 rounded-full flex items-center px-0.5 shrink-0"
+            style={{
+              width: 32,
+              height: 18,
+              background: theme === 'dark' ? 'var(--bg-overlay)' : 'var(--accent)',
+              border: '1px solid var(--border-default)',
+              transition: 'background 0.2s ease',
+            }}
+          >
+            <div
+              style={{
+                width: 13,
+                height: 13,
+                borderRadius: 9999,
+                background: theme === 'dark' ? 'var(--text-tertiary)' : '#fff',
+                transform: theme === 'dark' ? 'translateX(0)' : 'translateX(14px)',
+                transition: 'transform 0.2s ease, background 0.2s ease',
+              }}
+            />
+          </div>
+        </button>
+
+        <p className="text-center text-[10px]" style={{ color: 'var(--text-disabled)' }}>
+          Hackathon Demo • v0.1.0
+        </p>
       </div>
     </aside>
   );

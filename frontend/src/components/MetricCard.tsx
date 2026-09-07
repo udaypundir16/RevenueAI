@@ -18,30 +18,61 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   icon,
 }) => {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/80 to-slate-950/90 border border-slate-800/80 p-6 shadow-xl backdrop-blur-sm transition-all hover:border-slate-700/80 hover:shadow-2xl">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-400">{title}</span>
-        <div className="p-2.5 rounded-xl bg-slate-800/60 text-indigo-400 border border-slate-700/50">
+    <div
+      className="th-card relative overflow-hidden p-5 group cursor-default"
+      style={{ borderRadius: 14 }}
+    >
+      {/* Subtle top accent line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background: isPositive
+            ? 'linear-gradient(90deg, transparent, var(--success), transparent)'
+            : 'linear-gradient(90deg, transparent, var(--danger), transparent)',
+          opacity: 0.4,
+        }}
+      />
+
+      <div className="flex items-start justify-between">
+        <span className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+          {title}
+        </span>
+        <div
+          className="p-2 rounded-lg shrink-0"
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
           {icon}
         </div>
       </div>
 
-      <div className="mt-4 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tracking-tight text-white">{value}</span>
-        {change && (
+      <div className="mt-4">
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              isPositive
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-            }`}
+            className="text-2xl font-bold tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
           >
-            {change}
+            {value}
           </span>
-        )}
+          {change && (
+            <span
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                background: isPositive ? 'var(--success-muted)' : 'var(--danger-muted)',
+                color: isPositive ? 'var(--success)' : 'var(--danger)',
+                border: `1px solid ${isPositive ? 'var(--success-border)' : 'var(--danger-border)'}`,
+              }}
+            >
+              {change}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+          {subtitle}
+        </p>
       </div>
-
-      <p className="mt-2 text-xs text-slate-400">{subtitle}</p>
     </div>
   );
 };
